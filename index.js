@@ -1,8 +1,8 @@
-import { exec } from "child_process";
-import path from "path";
-import fs from "fs";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import mime from "mime-types";
+const { exec } = require("child_process");
+const path = require("path");
+const fs = require("fs");
+const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
+const mime = require("mime-types");
 
 const s3Client = new S3Client({
   region: "us-east-1",
@@ -30,28 +30,41 @@ async function init() {
 
   p.on("close", async function () {
     console.log("Build Complete");
-    const distFolderPath = path.join(__dirname, "output", "dist");
-    const distFolderContents = fs.readdirSync(distFolderPath, {
+    const buildFolderPath = path.join(__dirname, "out", "build");
+    const distFolderPath = path.join(__dirname, "out", "dist");
+
+    let outputFolderPath;
+
+    if (fs.existsSync(buildFolderPath)) {
+      outputFolderPath = buildFolderPath;
+    } else if (fs.existsSync(distFolderPath)) {
+      outputFolderPath = distFolderPath;
+    } else {
+      console.log("No build or dist folder found!!");
+      return;
+    }
+
+    const outputFolderContent = fs.readdirSync(outputFolderPath, {
       recursive: true,
     });
 
-    console.log(`Uploading ${filePath}`);
-    
-    for (const filePath of distFolderContents) {
+    for (const file of outputFolderContent) {
+      const filePath = path.join(outputFolderPath, file);
+      console.log(`Uploading ${filePath}`);
       if (fs.lstatSync(filePath).isDirectory()) continue;
 
       const uploadToS3Command = new PutObjectCommand({
         Bucket: "hostinary",
-        Key: `outputs/${PROJECT_ID}/${filePath}`,
+        Key: `outputs/${PROJECT_ID}/${file}`,
         Body: fs.createReadStream(filePath),
         ContentType: mime.lookup(filePath),
-      })
+      });
 
       await s3Client.send(uploadToS3Command);
       console.log(`Uploaded ${filePath}`);
     }
 
-    console.log("Uploaded to S3!!")
+    console.log("Uploaded to S3!!");
   });
 }
 

@@ -19,4 +19,4 @@ RUN npm install
 RUN chmod +x main.sh
 RUN chmod +x index.js
 
-ENTRYPOINT [ "/home/app/main.sh" ]
+ENTRYPOINT [ "bash", "/home/app/main.sh" ]
